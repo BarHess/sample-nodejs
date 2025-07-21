@@ -1,12 +1,10 @@
-name: Build‑Push‑Deploy to Minikube (PowerShell)
+name: Build‑Push‑Deploy (PowerShell + PAT)
 
 on: workflow_dispatch
 
 jobs:
   deploy:
     runs-on: self-hosted
-
-    permissions: { packages: write, contents: read }
 
     defaults:
       run:
@@ -18,28 +16,33 @@ jobs:
       TAG: ${{ github.run_number }}
 
     steps:
+
       - name: Check Minikube status
         run: minikube status
 
       - name: kubectl connectivity
         run: kubectl get nodes
-
       - uses: actions/checkout@v4
 
+      # ---- registry login (PAT) ------------------------------------------
       - name: Login to GHCR
-        run: |
-          echo ${{ secrets.GITHUB_TOKEN }} |
-          docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+        run: echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io `
+               -u ${{ github.repository_owner }} --password-stdin
 
+      # ---- build & push ---------------------------------------------------
       - name: Build image
-        run: docker build -t ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env.TAG }} .
+        run: docker build -t ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env:TAG }} .
 
       - name: Push image
-        run: docker push ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env.TAG }}
+        run: docker push ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env:TAG }}
 
-      - name: Deploy with Helm
+      # ---- deploy with Helm ----------------------------------------------
+      - name: Deploy
         run: |
           helm upgrade --install sample-nodejs .\chart `
             --set image.repository=ghcr.io/${{ github.repository_owner }}/sample-nodejs `
-            --set image.tag=${{ env.TAG }} `
+            --set image.tag=${{ env:TAG }} `
             --set image.pullPolicy=IfNotPresent
+
+
+
