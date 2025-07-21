@@ -1,18 +1,28 @@
 name: List Minikube Pods
 
 on:
-  workflow_dispatch: # You can also use push/pull_request/etc
+  workflow_dispatch:
 
 jobs:
   list-pods:
     runs-on: self-hosted
 
-    steps:
-      - name: Allow unsigned PowerShell scripts (for this session only)
-        shell: powershell
-        run: Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-      
-      - name: Check Minikube status
-        shell: powershell
-        run: minikube status
+    # 🔑 Launch every step with ExecutionPolicy=Bypass
+    defaults:
+      run:
+        # {0} is where GitHub inserts the temp script path
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command "& {0}"
 
+    steps:
+      - name: Show current execution policy (for proof)
+        run: Get-ExecutionPolicy -List   # will show Bypass for Process
+
+      - name: Ensure Minikube is running
+        run: |
+          minikube status || minikube start
+
+      - name: Point kubectl at Minikube
+        run: kubectl config use-context minikube
+
+      - name: List all pods
+        run: kubectl get pods --all-namespaces
