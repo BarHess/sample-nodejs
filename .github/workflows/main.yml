@@ -18,8 +18,7 @@ jobs:
         run: Get-ExecutionPolicy -List   # will show Bypass for Process
 
       - name: Ensure Minikube is running
-        run: |
-          minikube status || minikube start
+        run: minikube status 
 
       - name: Point kubectl at Minikube
         run: kubectl config use-context minikube
