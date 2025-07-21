@@ -1,0 +1,13 @@
+name: List Minikube Pods
+
+on:
+  workflow_dispatch: # You can also use push/pull_request/etc
+
+jobs:
+  list-pods:
+    runs-on: self-hosted
+
+    steps:
+      - name: Ensure Minikube is running
+        run: |
+          minikube status
