@@ -1,6 +1,7 @@
-name: Build‑Push‑Deploy (PowerShell + PAT)
+name: Build-Push-Deploy (PowerShell + PAT)
 
-on: workflow_dispatch
+on:
+  workflow_dispatch
 
 jobs:
   deploy:
@@ -13,44 +14,76 @@ jobs:
     env:
       MINIKUBE_HOME: 'C:\Users\Bar-DesktopNG\.minikube'
       KUBECONFIG:    'C:\Users\Bar-DesktopNG\.kube\config'
-      TAG: ${{ github.run_number }}
+      TAG: ${{ github.run_number }}             # dynamic tag 1,2,3 ...
 
     steps:
-
+      # --------------------------------------------------------------------
+      # 0) Cluster sanity checks
+      # --------------------------------------------------------------------
       - name: Check Minikube status
         run: minikube status
 
       - name: kubectl connectivity
         run: kubectl get nodes
-      - uses: actions/checkout@v4
 
-      # ---- registry login (PAT) ------------------------------------------
+      # --------------------------------------------------------------------
+      # 1) Checkout code (needs to be before build & helm)
+      # --------------------------------------------------------------------
+      - name: Checkout repo (firsthelm branch)
+        uses: actions/checkout@v4
+        with:
+          ref: firsthelm                # ensure correct branch
+
+      # --------------------------------------------------------------------
+      # 2) Login to GHCR with PAT
+      # --------------------------------------------------------------------
       - name: Login to GHCR
-        run: docker login ghcr.io `
-              -u ${{ github.repository_owner }} `
-              -p ${{ secrets.GHCR_PAT }}
+        run: |
+          docker login ghcr.io `
+            -u ${{ github.repository_owner }} `
+            -p ${{ secrets.GHCR_PAT }}
 
-      # ---- build & push ---------------------------------------------------
+      # --------------------------------------------------------------------
+      # 3) Build & push image (lower-case owner)
+      # --------------------------------------------------------------------
       - name: Build & push image
         run: |
-          $owner = "${{ github.repository_owner }}".ToLower()   # barhess
-          $tag   = $Env:TAG                                     # 14
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $tag   = $Env:TAG
           docker build -t ghcr.io/$owner/sample-nodejs:$tag .
           docker push ghcr.io/$owner/sample-nodejs:$tag
 
+      # --------------------------------------------------------------------
+      # 4) Install Helm (only if not already in PATH)
+      # --------------------------------------------------------------------
       - name: Install Helm
         run: |
-          $version   = 'v3.14.0'
-          $zipUrl    = "https://get.helm.sh/helm-$version-windows-amd64.zip"
-          $zipPath   = "$env:TEMP\helm.zip"
-          $installDir= "$env:ProgramFiles\helm"      # C:\Program Files\helm
-          Invoke-WebRequest $zipUrl -OutFile $zipPath
-          Expand-Archive $zipPath -DestinationPath $env:TEMP -Force
-          New-Item -ItemType Directory -Force -Path $installDir | Out-Null
-          Copy-Item "$env:TEMP\windows-amd64\helm.exe" $installDir -Force
-          # make helm.exe visible to later steps
-          echo "$installDir" | Out-File -FilePath $env:GITHUB_PATH -Append
+          if (-not (Get-Command helm -ErrorAction SilentlyContinue)) {
+            Write-Host "Helm not found – installing..."
+            $version   = 'v3.14.0'
+            $zipUrl    = "https://get.helm.sh/helm-$version-windows-amd64.zip"
+            $zipPath   = "$env:TEMP\helm.zip"
+            $installDir= "$env:ProgramFiles\helm"
+            Invoke-WebRequest $zipUrl -OutFile $zipPath
+            Expand-Archive $zipPath -DestinationPath $env:TEMP -Force
+            New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+            Copy-Item "$env:TEMP\windows-amd64\helm.exe" $installDir -Force
+            echo "$installDir" | Out-File -FilePath $env:GITHUB_PATH -Append
+          } else {
+            Write-Host "Helm already present."
+          }
 
+      # (Optional) Inspect workspace to be 100 % sure the chart is present
+      - name: List workspace (debug)
+        run: |
+          Write-Host "`nWorkspace contents (top-level):"
+          Get-ChildItem -Name
+          Write-Host "`nChart folder contents:"
+          Get-ChildItem -Recurse ./sampleapp/chart | Select-Object -First 20
+
+      # --------------------------------------------------------------------
+      # 5) Deploy with Helm
+      # --------------------------------------------------------------------
       - name: Deploy with Helm
         run: |
           $owner = "${{ github.repository_owner }}".ToLower()
@@ -59,6 +92,3 @@ jobs:
             --set image.repository=ghcr.io/$owner/sample-nodejs `
             --set image.tag=$tag `
             --set image.pullPolicy=IfNotPresent
-
-
-
