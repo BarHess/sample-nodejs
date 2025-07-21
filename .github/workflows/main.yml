@@ -8,6 +8,13 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Ensure Minikube is running
+      - name: Allow unsigned PowerShell scripts (for this session only)
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+      
+      - name: Check Minikube status
+        shell: pwsh
         run: |
           minikube status
+
