@@ -38,6 +38,19 @@ jobs:
           docker build -t ghcr.io/$owner/sample-nodejs:$tag .
           docker push ghcr.io/$owner/sample-nodejs:$tag
 
+      - name: Install Helm
+        run: |
+          $version   = 'v3.14.0'
+          $zipUrl    = "https://get.helm.sh/helm-$version-windows-amd64.zip"
+          $zipPath   = "$env:TEMP\helm.zip"
+          $installDir= "$env:ProgramFiles\helm"      # C:\Program Files\helm
+          Invoke-WebRequest $zipUrl -OutFile $zipPath
+          Expand-Archive $zipPath -DestinationPath $env:TEMP -Force
+          New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+          Copy-Item "$env:TEMP\windows-amd64\helm.exe" $installDir -Force
+          # make helm.exe visible to later steps
+          echo "$installDir" | Out-File -FilePath $env:GITHUB_PATH -Append
+          
       - name: Deploy with Helm
         run: |
           $owner = "${{ github.repository_owner }}".ToLower()
