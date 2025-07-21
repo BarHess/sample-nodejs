@@ -9,12 +9,10 @@ jobs:
 
     steps:
       - name: Allow unsigned PowerShell scripts (for this session only)
-        shell: pwsh
-        run: |
-          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+        shell: powershell
+        run: Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
       
       - name: Check Minikube status
-        shell: pwsh
-        run: |
-          minikube status
+        shell: powershell
+        run: minikube status
 
