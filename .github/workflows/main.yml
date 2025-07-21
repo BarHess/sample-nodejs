@@ -13,6 +13,10 @@ jobs:
         # {0} is where GitHub inserts the temp script path
         shell: powershell -NoProfile -ExecutionPolicy Bypass -Command "& {0}"
 
+    env:
+      MINIKUBE_HOME: C:\Users\Bar-DesktopNG\.minikube
+      KUBECONFIG:    C:\Users\Bar-DesktopNG\.kube\config
+
     steps:
       - name: Show current execution policy (for proof)
         run: Get-ExecutionPolicy -List   # will show Bypass for Process
