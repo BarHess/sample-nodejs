@@ -31,17 +31,20 @@ jobs:
               -p ${{ secrets.GHCR_PAT }}
 
       # ---- build & push ---------------------------------------------------
-      - name: Build image
-        run: docker build -t ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env.TAG }} .
-
-      - name: Push image
-        run: docker push ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env.TAG }}
-
-      - name: Deploy
+      - name: Build & push image
         run: |
+          $owner = "${{ github.repository_owner }}".ToLower()   # barhess
+          $tag   = $Env:TAG                                     # 14
+          docker build -t ghcr.io/$owner/sample-nodejs:$tag .
+          docker push ghcr.io/$owner/sample-nodejs:$tag
+
+      - name: Deploy with Helm
+        run: |
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $tag   = $Env:TAG
           helm upgrade --install sample-nodejs .\chart `
-            --set image.repository=ghcr.io/${{ github.repository_owner }}/sample-nodejs `
-            --set image.tag=${{ env.TAG }} `
+            --set image.repository=ghcr.io/$owner/sample-nodejs `
+            --set image.tag=$tag `
             --set image.pullPolicy=IfNotPresent
 
 
