@@ -84,7 +84,7 @@ jobs:
         run: |
           $owner = "${{ github.repository_owner }}".ToLower()
           $tag   = $Env:TAG
-          helm upgrade --install sample-nodejs ./sampleapp/chart `
+          helm upgrade --install sample-nodejs ./sampleapp `
             --set image.repository=ghcr.io/$owner/sample-nodejs `
             --set image.tag=$tag `
             --set image.pullPolicy=IfNotPresent
