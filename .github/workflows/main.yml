@@ -56,21 +56,26 @@ jobs:
       # --------------------------------------------------------------------
       # 4) Install Helm (only if not already in PATH)
       # --------------------------------------------------------------------
-      - name: Install Helm
+      - name: Ensure Helm is available
+        continue-on-error: true           # if install fails but helm exists, carry on
         run: |
-          if (-not (Get-Command helm -ErrorAction SilentlyContinue)) {
+          if (Get-Command helm -ErrorAction SilentlyContinue) {
+            Write-Host "Helm already present."
+            helm version
+          }
+          else {
             Write-Host "Helm not found – installing..."
-            $version   = 'v3.14.0'
-            $zipUrl    = "https://get.helm.sh/helm-$version-windows-amd64.zip"
-            $zipPath   = "$env:TEMP\helm.zip"
-            $installDir= "$env:ProgramFiles\helm"
+            $version    = 'v3.14.0'
+            $zipUrl     = "https://get.helm.sh/helm-$version-windows-amd64.zip"
+            $zipPath    = "$env:TEMP\helm.zip"
+            $installDir = "$env:ProgramFiles\helm"
             Invoke-WebRequest $zipUrl -OutFile $zipPath
             Expand-Archive $zipPath -DestinationPath $env:TEMP -Force
             New-Item -ItemType Directory -Force -Path $installDir | Out-Null
             Copy-Item "$env:TEMP\windows-amd64\helm.exe" $installDir -Force
+            # add to PATH for later steps
             echo "$installDir" | Out-File -FilePath $env:GITHUB_PATH -Append
-          } else {
-            Write-Host "Helm already present."
+            helm version
           }
 
       # (Optional) Inspect workspace to be 100 % sure the chart is present
