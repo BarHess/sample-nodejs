@@ -31,17 +31,16 @@ jobs:
 
       # ---- build & push ---------------------------------------------------
       - name: Build image
-        run: docker build -t ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env:TAG }} .
+        run: docker build -t ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env.TAG }} .
 
       - name: Push image
-        run: docker push ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env:TAG }}
+        run: docker push ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env.TAG }}
 
-      # ---- deploy with Helm ----------------------------------------------
       - name: Deploy
         run: |
           helm upgrade --install sample-nodejs .\chart `
             --set image.repository=ghcr.io/${{ github.repository_owner }}/sample-nodejs `
-            --set image.tag=${{ env:TAG }} `
+            --set image.tag=${{ env.TAG }} `
             --set image.pullPolicy=IfNotPresent
 
 
