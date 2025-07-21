@@ -1,31 +1,42 @@
-name: List Minikube Pods
+name: Build‑Push‑Deploy to Minikube (Bash)
 
-on:
-  workflow_dispatch:
+on: workflow_dispatch
 
 jobs:
-  list-pods:
+  deploy:
     runs-on: self-hosted
 
-    # 🔑 Launch every step with ExecutionPolicy=Bypass
-    defaults:
-      run:
-        # {0} is where GitHub inserts the temp script path
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command "& {0}"
+    permissions: { packages: write, contents: read }
+
+    defaults: { run: { shell: bash } }
 
     env:
-      MINIKUBE_HOME: C:\Users\Bar-DesktopNG\.minikube
-      KUBECONFIG:    C:\Users\Bar-DesktopNG\.kube\config
+      MINIKUBE_HOME: "C:\\Users\\Bar-DesktopNG\\.minikube"
+      KUBECONFIG:    "C:\\Users\\Bar-DesktopNG\\.kube\\config"
+      TAG: ${{ github.run_number }}
 
     steps:
-      - name: Show current execution policy (for proof)
-        run: Get-ExecutionPolicy -List   # will show Bypass for Process
+      - name: Check Minikube status
+        run: minikube status
 
-      - name: Ensure Minikube is running
-        run: minikube status 
+      - name: kubectl connectivity
+        run: kubectl get nodes
 
-      - name: Point kubectl at Minikube
-        run: kubectl config use-context minikube
+      - uses: actions/checkout@v4
 
-      - name: List all pods
-        run: kubectl get pods --all-namespaces
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | \
+             docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build image
+        run: docker build -t ghcr.io/${{ github.repository_owner }}/sample-nodejs:${TAG} .
+
+      - name: Push image
+        run: docker push ghcr.io/${{ github.repository_owner }}/sample-nodejs:${TAG}
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install sample-nodejs ./chart \
+            --set image.repository=ghcr.io/${{ github.repository_owner }}/sample-nodejs \
+            --set image.tag=${TAG} \
+            --set image.pullPolicy=IfNotPresent
