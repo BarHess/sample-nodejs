@@ -26,10 +26,9 @@ jobs:
 
       # ---- registry login (PAT) ------------------------------------------
       - name: Login to GHCR
-        run: |
-          $token = "${{ secrets.GHCR_PAT }}"
-          docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin <<< $token
-
+        run: docker login ghcr.io `
+              -u ${{ github.repository_owner }} `
+              -p ${{ secrets.GHCR_PAT }}
 
       # ---- build & push ---------------------------------------------------
       - name: Build image
