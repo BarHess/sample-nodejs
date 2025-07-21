@@ -50,12 +50,12 @@ jobs:
           Copy-Item "$env:TEMP\windows-amd64\helm.exe" $installDir -Force
           # make helm.exe visible to later steps
           echo "$installDir" | Out-File -FilePath $env:GITHUB_PATH -Append
-          
+
       - name: Deploy with Helm
         run: |
           $owner = "${{ github.repository_owner }}".ToLower()
           $tag   = $Env:TAG
-          helm upgrade --install sample-nodejs .\chart `
+          helm upgrade --install sample-nodejs .\sampleapp\chart `
             --set image.repository=ghcr.io/$owner/sample-nodejs `
             --set image.tag=$tag `
             --set image.pullPolicy=IfNotPresent
