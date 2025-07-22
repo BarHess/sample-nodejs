@@ -44,13 +44,16 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         
-      # ---- Install Trivy (works on Windows) ---------------------
+      # ---- Install Trivy -------------------------
       - name: Install Trivy
-        uses: aquasecurity/setup-trivy@v0.2.3
-        with:
-          version: 0.51.2          # or omit to get "latest"
-          cache: true              # optional
-      
+        run: |
+          $ver = '0.51.2'
+          $zip = "$env:TEMP\trivy.zip"
+          Invoke-WebRequest "https://github.com/aquasecurity/trivy/releases/download/v$ver/trivy_$ver_Windows-64bit.zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath "$env:TEMP\trivy" -Force
+          # put trivy.exe on PATH for later steps
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:TEMP\trivy"
+          trivy --version
       # ---- FS / dependency scan ---------------------------------
       - name: Trivy scan Filesystem (deps)
         run: trivy fs --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed .
