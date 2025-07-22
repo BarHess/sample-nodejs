@@ -27,12 +27,26 @@ jobs:
         run: kubectl get nodes
 
       # --------------------------------------------------------------------
-      # 1) Checkout code (needs to be before build & helm)
+      # 1) Checkout code (needs to be before build & helm) and code scan
       # --------------------------------------------------------------------
       - name: Checkout repo (firsthelm branch)
         uses: actions/checkout@v4
         with:
           ref: firsthelm                # ensure correct branch
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
 
       # --------------------------------------------------------------------
       # 2) Login to GHCR with PAT
