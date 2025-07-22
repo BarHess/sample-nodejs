@@ -44,26 +44,25 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         
-      - name: Trivy scan Filesystem (dependencies)
-        uses: aquasecurity/trivy-action@0.32.0
+      # ---- Install Trivy (works on Windows) ---------------------
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@v0.2.3
         with:
-          scan-type: fs
-          scan-ref: .
-          severity: HIGH,CRITICAL
-          
-      - name: Trivy scan Helm chart config
-        uses: aquasecurity/trivy-action@0.32.0
-        with:
-          scan-type: 'config'
-          scan-ref: './sampleapp'
-          severity: 'HIGH,CRITICAL'
-          
+          version: 0.51.2          # or omit to get "latest"
+          cache: true              # optional
+      
+      # ---- FS / dependency scan ---------------------------------
+      - name: Trivy scan Filesystem (deps)
+        run: trivy fs --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed .
+      
+      # ---- Secrets scan -----------------------------------------
       - name: Trivy scan Secrets
-        uses: aquasecurity/trivy-action@0.32.0
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          scanners: 'secret'
+        run: trivy fs --scanners secret --exit-code 1 .
+      
+      # ---- Helm/K8s config scan ---------------------------------
+      - name: Trivy scan Helm chart config
+        run: trivy config --severity HIGH,CRITICAL --exit-code 1 ./sampleapp/charts
+        
       # --------------------------------------------------------------------
       # 2) Login to GHCR with PAT
       # --------------------------------------------------------------------
@@ -83,11 +82,10 @@ jobs:
           docker build -t ghcr.io/$owner/sample-nodejs:$tag .
           docker push ghcr.io/$owner/sample-nodejs:$tag
           
-      - name: Trivy scan Docker image
-        uses: aquasecurity/trivy-action@0.32.0
-        with:
-          image-ref: ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env.TAG }}
-          severity: 'HIGH,CRITICAL'
+      # ---- Image scan (after build & push) ----------------------
+      - name: Trivy scan: Docker image
+        run: trivy image --severity HIGH,CRITICAL --exit-code 1 ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env.TAG }}
+        
       # --------------------------------------------------------------------
       # 4) Install Helm (only if not already in PATH)
       # --------------------------------------------------------------------
