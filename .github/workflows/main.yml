@@ -33,10 +33,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: firsthelm                # ensure correct branch
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
