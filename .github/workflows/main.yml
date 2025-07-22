@@ -58,7 +58,7 @@ jobs:
 
       - name: Trivy version
         run: trivy --version
-        
+
       # ---- FS / dependency scan ---------------------------------
       - name: Trivy scan Filesystem (deps)
         run: trivy fs --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed .
@@ -90,10 +90,12 @@ jobs:
           docker build -t ghcr.io/$owner/sample-nodejs:$tag .
           docker push ghcr.io/$owner/sample-nodejs:$tag
           
-      # ---- Image scan (after build & push) ----------------------
+      # ---- Image scan (after build & push) ----------------------- 
       - name: Trivy scan Docker image
-        run: trivy image --severity HIGH,CRITICAL --exit-code 1 ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env.TAG }}
-        
+        run: |
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $tag = $Env:TAG
+          trivy image --severity HIGH,CRITICAL --exit-code 1 ghcr.io/$owner/sample-nodejs:$tag
       # --------------------------------------------------------------------
       # 4) Install Helm (only if not already in PATH)
       # --------------------------------------------------------------------
