@@ -58,6 +58,7 @@ jobs:
 
       - name: Trivy version
         run: trivy --version
+        
       # ---- FS / dependency scan ---------------------------------
       - name: Trivy scan Filesystem (deps)
         run: trivy fs --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed .
@@ -68,7 +69,7 @@ jobs:
       
       # ---- Helm/K8s config scan ---------------------------------
       - name: Trivy scan Helm chart config
-        run: trivy config --severity HIGH,CRITICAL --exit-code 1 ./sampleapp/charts
+        run: trivy config --severity HIGH,CRITICAL --exit-code 1 ./sampleapp
         
       # --------------------------------------------------------------------
       # 2) Login to GHCR with PAT
