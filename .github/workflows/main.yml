@@ -43,20 +43,23 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+        
       - name: Trivy scan Filesystem (dependencies)
-        uses: aquasecurity/trivy-action@v0
+        uses: aquasecurity/trivy-action@0.32.0
         with:
           scan-type: fs
           scan-ref: .
           severity: HIGH,CRITICAL
+          
       - name: Trivy scan Helm chart config
-        uses: aquasecurity/trivy-action@v0
+        uses: aquasecurity/trivy-action@0.32.0
         with:
           scan-type: 'config'
           scan-ref: './sampleapp'
           severity: 'HIGH,CRITICAL'
+          
       - name: Trivy scan Secrets
-        uses: aquasecurity/trivy-action@v0
+        uses: aquasecurity/trivy-action@0.32.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -79,8 +82,9 @@ jobs:
           $tag   = $Env:TAG
           docker build -t ghcr.io/$owner/sample-nodejs:$tag .
           docker push ghcr.io/$owner/sample-nodejs:$tag
+          
       - name: Trivy scan Docker image
-        uses: aquasecurity/trivy-action@v0
+        uses: aquasecurity/trivy-action@0.32.0
         with:
           image-ref: ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env.TAG }}
           severity: 'HIGH,CRITICAL'
