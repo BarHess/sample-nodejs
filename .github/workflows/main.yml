@@ -43,24 +43,24 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
+      - name: Trivy scan Filesystem (dependencies)
+        uses: aquasecurity/trivy-action@v0.17.0
         with:
-          output: codeql-results.sarif
-      - name: Fail on High/Critical CodeQL findings
-        run: |
-          $sarif = Get-Content 'codeql-results.sarif' | ConvertFrom-Json
-          write-host $sarif
-          $highOrCritical = $sarif.runs.results |
-            Where-Object {
-              $_.rule.severity -eq "error" -or
-              $_.rule.severity -eq "high" -or
-              $_.rule.severity -eq "critical"
-            }
-          if ($highOrCritical.Count -gt 0) {
-            Write-Host "::error::CodeQL found High or Critical vulnerabilities"
-            exit 1
-          } else {
-            Write-Host "No High or Critical vulnerabilities found by CodeQL."
-          }
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+      - name: Trivy scan Helm chart config
+        uses: aquasecurity/trivy-action@v0.17.0
+        with:
+          scan-type: 'config'
+          scan-ref: './sampleapp'
+          severity: 'HIGH,CRITICAL'
+      - name: Trivy scan Secrets
+        uses: aquasecurity/trivy-action@v0.17.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'secret'
       # --------------------------------------------------------------------
       # 2) Login to GHCR with PAT
       # --------------------------------------------------------------------
@@ -79,7 +79,11 @@ jobs:
           $tag   = $Env:TAG
           docker build -t ghcr.io/$owner/sample-nodejs:$tag .
           docker push ghcr.io/$owner/sample-nodejs:$tag
-
+      - name: Trivy scan Docker image
+        uses: aquasecurity/trivy-action@v0.17.0
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/sample-nodejs:${{ env.TAG }}
+          severity: 'HIGH,CRITICAL'
       # --------------------------------------------------------------------
       # 4) Install Helm (only if not already in PATH)
       # --------------------------------------------------------------------
