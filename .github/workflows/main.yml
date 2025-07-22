@@ -44,20 +44,20 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         
-      # ---- Install Trivy -------------------------------------------------
-      - name: Install Trivy
+      - name: Install Trivy (Windows)
         run: |
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-          $ver   = '0.64.1'
-          $asset = "trivy_${ver}_windows-64bit.zip"
-          $url   = "https://github.com/aquasecurity/trivy/releases/download/v$ver/$asset"
-          $zip   = "$env:TEMP\$asset"
-          $dest  = "$env:TEMP\trivy"
-          Write-Host "Downloading $url"
-          curl.exe -L $url -o $zip
-          Expand-Archive $zip -DestinationPath $dest -Force
-          Add-Content -Path $env:GITHUB_PATH -Value $dest
-          trivy --version
+          $ver  = '0.64.1'
+          $zip  = "$env:TEMP\trivy.zip"
+          $dir  = "$env:TEMP\trivy"
+          Invoke-WebRequest "https://github.com/aquasecurity/trivy/releases/download/v$ver/trivy_${ver}_windows-64bit.zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath $dir -Force
+          # expose for NEXT steps
+          echo $dir | Out-File -FilePath $env:GITHUB_PATH -Append
+          Get-ChildItem $dir
+
+      - name: Trivy version
+        run: trivy --version
       # ---- FS / dependency scan ---------------------------------
       - name: Trivy scan Filesystem (deps)
         run: trivy fs --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed .
