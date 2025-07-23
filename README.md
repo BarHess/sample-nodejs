@@ -26,7 +26,7 @@ Kubernetes Cluster: A local Minikube cluster was used to host the application, A
 
 CI/CD Runner: The GitHub Actions pipelines were executed on a self-hosted runner configured on a Windows PC. This provided direct control over the build environment and faster execution times.
 
-Application Access: To access the application via the Ingress hostname (sampleapp), the local Windows hosts file was modified to point the hostname to the Minikube cluster's IP address. This is a standard practice for local development with Ingress controllers.
+Application Access: To access the application via the Ingress hostname (sampleapp), the local Windows hosts file was modified to point the hostname to the Minikube cluster's IP address.
 
 ## 2. Architecture Overview
 The architecture is designed around modern GitOps and DevSecOps principles to create a secure, automated, and auditable path to production.
