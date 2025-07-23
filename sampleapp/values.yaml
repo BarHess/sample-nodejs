@@ -13,7 +13,7 @@ image:
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
 
-  tag: "23072025-11"
+  tag: "23072025-1"
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 
 imagePullSecrets: []
@@ -126,7 +126,6 @@ volumeMounts: []
 nodeSelector: {}
 tolerations: []
 affinity: {}
-
 serviceMonitor:
   # When set to true, a ServiceMonitor resource will be created
   enabled: true
