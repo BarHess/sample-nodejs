@@ -1,0 +1,81 @@
+name: helmdeploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    defaults:
+      run:
+        # {0} is where GitHub inserts the temp script path
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command "& {0}"
+    
+    env:
+      MINIKUBE_HOME: C:\Users\Bar-DesktopNG\.minikube
+      KUBECONFIG:    C:\Users\Bar-DesktopNG\.kube\config
+
+    steps:
+      - name: Ensure Minikube is running
+        run: minikube status 
+
+      # cluster sanity check
+      - name: Check Minikube status
+        run: minikube status
+
+      - name: Point kubectl at Minikube
+        run: kubectl config use-context minikube
+
+      - name: kubectl connectivity
+        run: kubectl get nodes
+
+      - name: Set TAG with date and run_number 
+        run: |
+          $date = Get-Date -Format "ddMMyyyy"
+          echo "TAG=$date-${{ github.run_number }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+        shell: powershell
+
+      # download code to the runner
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # GHCR login
+      - name: Login to GHCR
+        run: |
+          docker login ghcr.io `
+            -u ${{ github.repository_owner }} `
+            -p ${{ secrets.GHCR_PAT }}
+
+      # docker build
+      - name: Build & push image
+        run: |
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $tag   = $Env:TAG
+          docker build -t ghcr.io/$owner/sample-nodejs:$tag .
+          docker push ghcr.io/$owner/sample-nodejs:$tag
+ 
+      - name: Install Helm
+        run: |
+          $version   = 'v3.14.0'
+          $zipUrl    = "https://get.helm.sh/helm-$version-windows-amd64.zip"
+          $zipPath   = "$env:TEMP\helm.zip"
+          $installDir= "$env:ProgramFiles\helm"      # C:\Program Files\helm
+          Invoke-WebRequest $zipUrl -OutFile $zipPath
+          Expand-Archive $zipPath -DestinationPath $env:TEMP -Force
+          New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+          Copy-Item "$env:TEMP\windows-amd64\helm.exe" $installDir -Force
+          # make helm.exe visible to later steps
+          echo "$installDir" | Out-File -FilePath $env:GITHUB_PATH -Append
+      
+      # deploy helm
+      - name: Deploy with Helm
+        run: |
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $tag   = $Env:TAG
+          helm upgrade --install sample-nodejs ./sampleapp `
+            --namespace sampleproject `
+            --create-namespace `
+            --set image.repository=ghcr.io/$owner/sample-nodejs `
+            --set image.tag=$tag `
+            --set image.pullPolicy=IfNotPresent
