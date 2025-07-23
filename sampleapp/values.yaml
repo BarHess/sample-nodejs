@@ -130,5 +130,4 @@ serviceMonitor:
   # When set to true, a ServiceMonitor resource will be created
   enabled: true
   # The namespace where the ServiceMonitor resource will be created.
-
   namespace: monitoring

@@ -1,7 +1,5 @@
 # .github/workflows/release.yml
 name: ReleaseToArgoCD
-
-# This workflow runs ONLY when a Pull Request from 'main' is closed and merged into the 'release' branch.
 on:
   pull_request:
     types: [closed]
@@ -16,8 +14,7 @@ concurrency:
 
 jobs:
   release:
-    # This 'if' condition ensures the job only runs if the PR was actually merged
-    # and the source branch was 'main'.
+    # This 'if' condition ensures the job only runs if the PR was actually merged and the source branch was 'main'.
     if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'main'
     runs-on: self-hosted
     defaults:
@@ -25,26 +22,27 @@ jobs:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -Command "& {0}"
 
     steps:
-      # 1. Get the code from the 'release' branch after the merge has completed
+      # Get the code from the 'release' branch
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           ref: release
           token: ${{ secrets.GHCR_PAT }}
 
-      # 2. Set the image tag using your preferred date and run_number format
+      # Set the image tag env variable using date and run_number format
       - name: Set TAG with date and run_number
         run: |
           $date = Get-Date -Format "ddMMyyyy"
           echo "TAG=$date-${{ github.run_number }}" | Out-File -FilePath $env:GITHUB_ENV -Append
         shell: powershell
 
-      # 3. Login to the container registry
+
+      # Login to GHCR
       - name: Login to GHCR
         run: |
           docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_PAT }}
 
-      # 4. Build and Push the OFFICIAL production image
+      # Build and Push
       - name: Build & push image
         run: |
           # Construct the image name with a lowercase owner, as required by GHCR
@@ -54,9 +52,7 @@ jobs:
           docker push "$imageName`:${{ env.TAG }}"
           Write-Host "Pushed production image: $imageName`:${{ env.TAG }}"
 
-      # --- This is the hand-off to ArgoCD ---
-
-      # 5. Update the 'values.yaml' file to use the new image tag
+      # Update the 'values.yaml' file to use the new image tag
       - name: Install yq
         run: |
           Invoke-WebRequest -Uri "https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_windows_amd64.exe" -OutFile "C:\Windows\System32\yq.exe"
@@ -69,7 +65,7 @@ jobs:
           # Use 'yq eval' with 'strenv' to safely pass the tag value, avoiding shell quoting issues.
           yq eval -i ".image.tag = strenv(YQ_IMAGE_TAG)" ./sampleapp/values.yaml
 
-      # 6. Commit and push the updated values.yaml back to the release branch
+      # Commit and push the updated values.yaml back to the release branch
       - name: Commit and push the updated values.yaml
         run: |
           git config --global user.name "GitHub Actions Bot"
