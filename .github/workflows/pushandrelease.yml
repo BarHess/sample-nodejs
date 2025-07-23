@@ -59,7 +59,9 @@ jobs:
           # Check for changes before committing
           if (-not (git diff --staged --quiet)) {
             git commit -m "ci(release): update image tag to ${{ env.IMAGE_TAG }}"
-            # This is a more robust way to push to the specific branch
+            # Before pushing, pull the latest changes from the remote branch.
+            # Use --rebase to avoid creating an unnecessary merge commit.
+            git pull origin release --rebase
             git push origin HEAD:release
           } else {
             Write-Host "No changes to commit."
