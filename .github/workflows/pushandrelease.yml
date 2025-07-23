@@ -77,7 +77,6 @@ jobs:
           git add ./sampleapp/values.yaml
           if (-not (git diff --staged --quiet)) {
             git commit -m "ci(release): update image tag to ${{ env.TAG }}"
-            # With concurrency control, a simple push is now safe.
             git push origin release
           } else {
             Write-Host "No changes to commit."
