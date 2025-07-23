@@ -1,4 +1,4 @@
-name: Build-Push-Deploy (PowerShell + PAT)
+name: BuildAndScan
 
 on:
   push:
