@@ -19,7 +19,16 @@ A lightweight Node.js application. It features basic web endpoints, Prometheus m
 # DevOps Sample Node.js App & CI/CD Pipeline
 This repository contains a sample Node.js application, a comprehensive CI/CD pipeline built with GitHub Actions and uses GitHub Container Registry, and the necessary Kubernetes manifests packaged as a Helm chart for deployment. This document outlines the technical decisions and implementation details for the key components of this project, addressing all requirements of the DevOps task.
 
-## 1. Architecture Overview
+## 1. Local Environment & Setup
+This project was developed and tested using a specific local environment.
+
+Kubernetes Cluster: A local Minikube cluster was used to host the application, ArgoCD, and the Prometheus monitoring stack.
+
+CI/CD Runner: The GitHub Actions pipelines were executed on a self-hosted runner configured on a Windows PC. This provided direct control over the build environment and faster execution times.
+
+Application Access: To access the application via the Ingress hostname (sampleapp), the local Windows hosts file was modified to point the hostname to the Minikube cluster's IP address. This is a standard practice for local development with Ingress controllers.
+
+## 2. Architecture Overview
 The architecture is designed around modern GitOps and DevSecOps principles to create a secure, automated, and auditable path to production.
 
 CI (Continuous Integration): A pull request to the main branch triggers the BuildAndScan pipeline (main.yml). This pipeline runs static code analysis (SAST), Helm chart validation, and builds a temporary Docker image to scan for vulnerabilities. It acts as a quality gate; no code can be merged if these checks fail.
@@ -34,7 +43,7 @@ GitOps Sync: ArgoCD, which is constantly watching the release branch, detects th
 
 Observability: A Prometheus monitoring stack, installed in the cluster, automatically discovers the running application via a ServiceMonitor and scrapes its /metrics endpoint for real-time performance data.
 
-## 2. Helm Chart Decisions
+## 3. Helm Chart Decisions
 The application is packaged as a Helm chart located in the /sampleapp directory.
 
 ### a. Workload Choice: Deployment
@@ -51,7 +60,7 @@ Service & Ingress: A ClusterIP Service exposes the application within the cluste
 
 Pod Quality of Service (QoS): The deployment.yaml sets CPU and memory requests and limits to the same value. This configuration assigns the pod the Guaranteed QoS class. This is the highest priority class, meaning Kubernetes will not evict this pod , making it ideal for critical production workloads.
 
-![alt text](image-2.png)
+![alt text](./imgs/image-2.png)
 
 ### c. Security Context Explained
 A restrictive securityContext is defined in values.yaml to harden the container at runtime by adhering to the principle of least privilege.
@@ -64,7 +73,7 @@ capabilities: { drop: ["ALL"] }: Linux capabilities are fine-grained permissions
 
 allowPrivilegeEscalation: false: Prevents a process inside the container from gaining more privileges than its parent process, closing another potential attack vector.
 
-## 3. CI/CD Pipeline Strategy
+## 4. CI/CD Pipeline Strategy
 A two-pipeline strategy is implemented using GitHub Actions to separate validation from deployment.
 
 main.yml (BuildAndScan): This is the quality gate. Triggered on every Pull Request to main, it performs all critical security checks before code is merged. This "shift-left" approach catches issues early.
@@ -89,7 +98,7 @@ IaC Scan (trivy config): Scans the Helm chart templates for security misconfigur
 
 Container Image Scan (trivy image): Scans the final Docker image for vulnerabilities in the base OS and other installed packages.
 
-## 4. Deployment Strategy: GitOps with ArgoCD
+## 5. Deployment Strategy: GitOps with ArgoCD
 A GitOps model using ArgoCD was chosen for deploying to production.
 
 Repository Strategy: ArgoCD is configured to monitor the application repository directly. For a project of this scale, this "monorepo" approach is simpler and provides a clear correlation between the application code and its deployment configuration.
@@ -101,8 +110,8 @@ Self-Healing: The ArgoCD Application is configured with selfHeal: true. This mea
 Extending to More Environments: This single-environment pattern can be easily extended. For a dev -> stage -> prod lifecycle, we would create develop and staging branches. We would then create two more ArgoCD Application manifests: one watching the develop branch to deploy to a dev namespace, and another watching the staging branch to deploy to a staging namespace. The promotion between environments would be managed by pull requests between these Git branches.
 
 you can find the ArgoCD application definition in the argo/ directory, inside the argo-app.yml file.
-![alt text](image-4.png)
-## 5. Bonus: Observability with Prometheus
+![alt text](./imgs/image-4.png)
+## 6. Bonus: Observability with Prometheus
 To provide full observability into the running application, a complete monitoring stack was deployed.
 
 Installation: The kube-prometheus-stack Helm chart was used to deploy Prometheus (for metrics collection) and Grafana (for visualization) into a dedicated monitoring namespace.
@@ -115,7 +124,9 @@ Prometheus and Statelessness: This setup perfectly complements the stateless app
 
 I have also provided a sample Grafana dashboard, which is located at grafana/.
 
-![alt text](image.png)
-![alt text](image-1.png)
+![alt text](./imgs/image.png)
+![alt text](./imgs/image-1.png)
 
-![alt text](image-3.png)
+# 7. screenshots that validate the application is running
+
+![alt text](./imgs/image-3.png)
