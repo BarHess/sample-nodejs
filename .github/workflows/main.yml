@@ -21,6 +21,7 @@ jobs:
     steps:
       - name: Set TAG with date and run_number (PowerShell)
         run: |
+          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
           $date = Get-Date -Format "ddMMyyyy"
           echo "TAG=$date-${{ github.run_number }}" | Out-File -FilePath $env:GITHUB_ENV -Append
         shell: powershell
