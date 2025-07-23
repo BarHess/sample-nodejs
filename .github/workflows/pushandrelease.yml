@@ -45,7 +45,7 @@ jobs:
 
       - name: Update image tag in values.yaml
         run: |
-          yq -i ".image.tag = \"${{ env.TAG }}\"" ./sampleapp/values.yaml
+          yq -i '.image.tag = "${{ env.TAG }}"' ./sampleapp/values.yaml
 
       # Commit the updated values.yaml back to the release branch
       - name: Commit and push the updated values.yaml
