@@ -4,6 +4,7 @@ metadata:
   name: {{ include "sampleapp.fullname" . }}
   labels:
     {{- include "sampleapp.labels" . | nindent 4 }}
+    app: {{ include "sampleapp.name" . }}
   annotations:
     # These keys must be indented to be children of 'annotations'
     prometheus.io/scrape: "true"

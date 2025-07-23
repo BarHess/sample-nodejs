@@ -1,0 +1,27 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "sampleapp.fullname" . }}
+  # This now uses the namespace you defined in values.yaml
+  namespace: {{ .Values.serviceMonitor.namespace }}
+  labels:
+    # This label is important! The Prometheus Operator uses it to find new ServiceMonitors.
+    release: prometheus
+spec:
+  # This section tells the ServiceMonitor which services to look for.
+  selector:
+    matchLabels:
+      # It will look for any service that has this label.
+      app: {{ include "sampleapp.name" . }}
+  # This section tells the ServiceMonitor which namespace to look for the service in.
+  # .Release.Namespace is the namespace ArgoCD is deploying the app to (e.g., "sampleproject").
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  # This section defines the endpoint to scrape.
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s # Scrape every 15 seconds
+{{- end }}
