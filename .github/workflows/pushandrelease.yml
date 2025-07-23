@@ -44,8 +44,12 @@ jobs:
           Invoke-WebRequest -Uri "https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_windows_amd64.exe" -OutFile "C:\Windows\System32\yq.exe"
 
       - name: Update image tag in values.yaml
+        env:
+          # Make the tag available as a dedicated environment variable for yq
+          YQ_IMAGE_TAG: ${{ env.TAG }}
         run: |
-          yq -i '.image.tag = "${{ env.TAG }}"' ./sampleapp/values.yaml
+          # Use 'yq eval' with 'strenv' to safely pass the tag value, avoiding shell quoting issues.
+          yq eval -i ".image.tag = strenv(YQ_IMAGE_TAG)" ./sampleapp/values.yaml
 
       # Commit the updated values.yaml back to the release branch
       - name: Commit and push the updated values.yaml
