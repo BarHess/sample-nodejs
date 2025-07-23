@@ -17,7 +17,7 @@ A lightweight Node.js application. It features basic web endpoints, Prometheus m
 
 
 # DevOps Sample Node.js App & CI/CD Pipeline
-This ****repository**** contains a sample Node.js application, a comprehensive CI/CD pipeline built with GitHub Actions and uses GitHub Container Registry, and the necessary Kubernetes manifests packaged as a Helm chart for deployment. This document outlines the technical decisions and implementation details for the key components of this project, addressing all requirements of the DevOps task.
+This repository contains a sample Node.js application, a comprehensive CI/CD pipeline built with GitHub Actions and uses GitHub Container Registry, and the necessary Kubernetes manifests packaged as a Helm chart for deployment. This document outlines the technical decisions and implementation details for the key components of this project, addressing all requirements of the DevOps task.
 
 ## 1. Architecture Overview
 The architecture is designed around modern GitOps and DevSecOps principles to create a secure, automated, and auditable path to production.
@@ -50,6 +50,8 @@ Probes: readinessProbe and livenessProbe are configured in values.yaml and point
 Service & Ingress: A ClusterIP Service exposes the application within the cluster, and an Ingress resource manages external access.
 
 Pod Quality of Service (QoS): The deployment.yaml sets CPU and memory requests and limits to the same value. This configuration assigns the pod the Guaranteed QoS class. This is the highest priority class, meaning Kubernetes will not evict this pod , making it ideal for critical production workloads.
+
+![alt text](image-2.png)
 
 ### c. Security Context Explained
 A restrictive securityContext is defined in values.yaml to harden the container at runtime by adhering to the principle of least privilege.
@@ -99,7 +101,7 @@ Self-Healing: The ArgoCD Application is configured with selfHeal: true. This mea
 Extending to More Environments: This single-environment pattern can be easily extended. For a dev -> stage -> prod lifecycle, we would create develop and staging branches. We would then create two more ArgoCD Application manifests: one watching the develop branch to deploy to a dev namespace, and another watching the staging branch to deploy to a staging namespace. The promotion between environments would be managed by pull requests between these Git branches.
 
 you can find the ArgoCD application definition in the argo/ directory, inside the argo-app.yml file.
-
+![alt text](image-4.png)
 ## 5. Bonus: Observability with Prometheus
 To provide full observability into the running application, a complete monitoring stack was deployed.
 
@@ -112,3 +114,8 @@ Service Discovery: A ServiceMonitor resource was added to the application's Helm
 Prometheus and Statelessness: This setup perfectly complements the stateless application architecture. The application pods can be created and destroyed, and their internal metrics counters can reset without any data loss. Prometheus is the stateful component that scrapes this ephemeral data, aggregates it, and stores it long-term, providing a stable and accurate view of the entire system's health.
 
 I have also provided a sample Grafana dashboard, which is located at grafana/.
+
+![alt text](image.png)
+![alt text](image-1.png)
+
+![alt text](image-3.png)

@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-nodejs-prod
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    # The URL of your Git repository
+    repoURL: 'https://github.com/BarHess/sample-nodejs'
+    # The path inside the repo where the Helm chart is located
+    path: sampleapp
+    # The specific Git branch ArgoCD should watch for changes
+    targetRevision: release
+
+    # This section defines the DESTINATION this URL always means "the same cluster Argo is running in"
+    server: 'https://kubernetes.default.svc'
+    # The Kubernetes namespace where your app should be deployed
+    namespace: sampleproject
+
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
