@@ -4,12 +4,10 @@ metadata:
   name: {{ include "sampleapp.fullname" . }}
   labels:
     {{- include "sampleapp.labels" . | nindent 4 }}
-    annotations:
-    # This tells Prometheus that it should scrape this service for metrics
+  annotations:
+    # These keys must be indented to be children of 'annotations'
     prometheus.io/scrape: "true"
-    # This tells Prometheus which port the metrics are exposed on
     prometheus.io/port: "{{ .Values.service.port }}"
-    # This tells Prometheus the specific path of your metrics endpoint
     prometheus.io/path: /metrics
 spec:
   type: {{ .Values.service.type }}
