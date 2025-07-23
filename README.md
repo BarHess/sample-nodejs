@@ -49,7 +49,8 @@ The application is packaged as a Helm chart located in the /sampleapp directory.
 ### a. Workload Choice: Deployment
 A Kubernetes Deployment was chosen over a StatefulSet.
 
-Justification: The Node.js application is stateless. It does not store any critical data or session information in its own memory. Even the Prometheus metrics counter is considered observability state, which is designed to be ephemeral and aggregated by an external system (Prometheus). A Deployment is the standard and most efficient way to manage stateless, scalable applications.
+Justification: The Node.js application is stateless. It does not store any critical data or session information in its own memory. Even the Prometheus metrics counter is considered observability state, which is designed to be ephemeral and aggregated by an external system (Prometheus). A Deployment is the standard and most efficient way to manage stateless, scalable applications. 
+**To ensure better scalability, Horizontal Pod Autoscaler (HPA) should be enabled and properly configured for production workloads. Currently, it is disabled.**
 
 ### b. Kubernetes Manifest Features
 The Helm chart utilizes several key Kubernetes features for robustness and security:
