@@ -23,7 +23,7 @@ jobs:
         run: |
           $date = Get-Date -Format "ddMMyyyy"
           echo "TAG=$date-${{ github.run_number }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-        shell: pwsh
+        shell: powershell
 
       # cluster sanity check
       - name: Check Minikube status
