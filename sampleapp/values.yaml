@@ -120,3 +120,12 @@ volumeMounts: []
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# This section controls the creation of a ServiceMonitor resource,
+# which tells the Prometheus Operator how to scrape this application for metrics.
+serviceMonitor:
+  # When set to true, a ServiceMonitor resource will be created
+  enabled: true
+  # The namespace where the ServiceMonitor resource will be created.
+  # This MUST match the namespace where your Prometheus is running.
+  namespace: monitoring
