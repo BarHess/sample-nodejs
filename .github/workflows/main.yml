@@ -17,25 +17,26 @@ jobs:
     env:
       MINIKUBE_HOME: 'C:\Users\Bar-DesktopNG\.minikube'
       KUBECONFIG:    'C:\Users\Bar-DesktopNG\.kube\config'
-      TAG: ${{ github.run_number }}             # dynamic tag 1,2,3 ...
 
     steps:
-      # --------------------------------------------------------------------
-      # 0) Cluster sanity checks
-      # --------------------------------------------------------------------
+      - name: Set TAG with date and run_number (PowerShell)
+        run: |
+          $date = Get-Date -Format "ddMMyyyy"
+          echo "TAG=$date-${{ github.run_number }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+        shell: pwsh
+
+      # cluster sanity check
       - name: Check Minikube status
         run: minikube status
 
       - name: kubectl connectivity
         run: kubectl get nodes
 
-      # --------------------------------------------------------------------
-      # 1) Checkout code (needs to be before build & helm) and code scan
-      # --------------------------------------------------------------------
-      - name: Checkout repo (firsthelm branch)
+      # download code to the runner
+      - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          ref: firsthelm                # ensure correct branch
+
+      # code analysis
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
@@ -47,7 +48,8 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         
-      - name: Install Trivy (Windows)
+      #install trivy
+      - name: Install Trivy
         run: |
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
           $ver  = '0.64.1'
@@ -62,30 +64,26 @@ jobs:
       - name: Trivy version
         run: trivy --version
 
-      # ---- FS / dependency scan ---------------------------------
+      # Trivy FS-dependency scan
       - name: Trivy scan Filesystem (deps)
         run: trivy fs --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed .
       
-      # ---- Secrets scan -----------------------------------------
+      # Trivy secrets scan
       - name: Trivy scan Secrets
         run: trivy fs --scanners secret --exit-code 1 .
       
-      # ---- Helm/K8s config scan ---------------------------------
+      # Trivy helm scan
       - name: Trivy scan Helm chart config
         run: trivy config --severity HIGH,CRITICAL --exit-code 1 ./sampleapp
         
-      # --------------------------------------------------------------------
-      # 2) Login to GHCR with PAT
-      # --------------------------------------------------------------------
+      # GHCR login
       - name: Login to GHCR
         run: |
           docker login ghcr.io `
             -u ${{ github.repository_owner }} `
             -p ${{ secrets.GHCR_PAT }}
 
-      # --------------------------------------------------------------------
-      # 3) Build & push image (lower-case owner)
-      # --------------------------------------------------------------------
+      # docker build and push
       - name: Build & push image
         run: |
           $owner = "${{ github.repository_owner }}".ToLower()
@@ -93,15 +91,13 @@ jobs:
           docker build -t ghcr.io/$owner/sample-nodejs:$tag .
           docker push ghcr.io/$owner/sample-nodejs:$tag
           
-      # ---- Image scan (after build & push) ----------------------- 
+      # image scan
       - name: Trivy scan Docker image
         run: |
           $owner = "${{ github.repository_owner }}".ToLower()
           $tag = $Env:TAG
           trivy image --severity HIGH,CRITICAL --exit-code 1 ghcr.io/$owner/sample-nodejs:$tag
-      # --------------------------------------------------------------------
-      # 4) Install Helm (only if not already in PATH)
-      # --------------------------------------------------------------------
+      # helm install
       - name: Install Helm
         run: |
           $version   = 'v3.14.0'
@@ -114,23 +110,15 @@ jobs:
           Copy-Item "$env:TEMP\windows-amd64\helm.exe" $installDir -Force
           # make helm.exe visible to later steps
           echo "$installDir" | Out-File -FilePath $env:GITHUB_PATH -Append
-
-      # (Optional) Inspect workspace to be 100 % sure the chart is present
-      - name: List workspace (debug)
-        run: |
-          Write-Host "`nWorkspace contents (top-level):"
-          Get-ChildItem -Name
-          Write-Host "`nChart folder contents:"
-          Get-ChildItem -Recurse ./sampleapp/chart | Select-Object -First 20
-
-      # --------------------------------------------------------------------
-      # 5) Deploy with Helm
-      # --------------------------------------------------------------------
+      
+      # deploy helm
       - name: Deploy with Helm
         run: |
           $owner = "${{ github.repository_owner }}".ToLower()
           $tag   = $Env:TAG
           helm upgrade --install sample-nodejs ./sampleapp `
+            --namespace sampleproject `
+            --create-namespace `
             --set image.repository=ghcr.io/$owner/sample-nodejs `
             --set image.tag=$tag `
             --set image.pullPolicy=IfNotPresent
