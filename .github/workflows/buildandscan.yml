@@ -4,34 +4,18 @@ on:
   push:
     branches: ['**']
   pull_request:
-    branches: ['**']
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: self-hosted
 
-    defaults:
-      run:
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command "& {0}"
-
-    env:
-      MINIKUBE_HOME: 'C:\Users\Bar-DesktopNG\.minikube'
-      KUBECONFIG:    'C:\Users\Bar-DesktopNG\.kube\config'
-
     steps:
-      - name: Set TAG with date and run_number (PowerShell)
+      - name: Set TAG with date and run_number 
         run: |
-          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
           $date = Get-Date -Format "ddMMyyyy"
           echo "TAG=$date-${{ github.run_number }}" | Out-File -FilePath $env:GITHUB_ENV -Append
         shell: powershell
-
-      # cluster sanity check
-      - name: Check Minikube status
-        run: minikube status
-
-      - name: kubectl connectivity
-        run: kubectl get nodes
 
       # download code to the runner
       - name: Checkout repo
@@ -66,7 +50,7 @@ jobs:
         run: trivy --version
 
       # Trivy FS-dependency scan
-      - name: Trivy scan Filesystem (deps)
+      - name: Trivy scan Filesystem
         run: trivy fs --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed .
       
       # Trivy secrets scan
@@ -84,13 +68,12 @@ jobs:
             -u ${{ github.repository_owner }} `
             -p ${{ secrets.GHCR_PAT }}
 
-      # docker build and push
+      # docker build
       - name: Build & push image
         run: |
           $owner = "${{ github.repository_owner }}".ToLower()
           $tag   = $Env:TAG
           docker build -t ghcr.io/$owner/sample-nodejs:$tag .
-          docker push ghcr.io/$owner/sample-nodejs:$tag
           
       # image scan
       - name: Trivy scan Docker image
@@ -98,28 +81,3 @@ jobs:
           $owner = "${{ github.repository_owner }}".ToLower()
           $tag = $Env:TAG
           trivy image --severity HIGH,CRITICAL --exit-code 1 ghcr.io/$owner/sample-nodejs:$tag
-      # helm install
-      - name: Install Helm
-        run: |
-          $version   = 'v3.14.0'
-          $zipUrl    = "https://get.helm.sh/helm-$version-windows-amd64.zip"
-          $zipPath   = "$env:TEMP\helm.zip"
-          $installDir= "$env:ProgramFiles\helm"      # C:\Program Files\helm
-          Invoke-WebRequest $zipUrl -OutFile $zipPath
-          Expand-Archive $zipPath -DestinationPath $env:TEMP -Force
-          New-Item -ItemType Directory -Force -Path $installDir | Out-Null
-          Copy-Item "$env:TEMP\windows-amd64\helm.exe" $installDir -Force
-          # make helm.exe visible to later steps
-          echo "$installDir" | Out-File -FilePath $env:GITHUB_PATH -Append
-      
-      # deploy helm
-      - name: Deploy with Helm
-        run: |
-          $owner = "${{ github.repository_owner }}".ToLower()
-          $tag   = $Env:TAG
-          helm upgrade --install sample-nodejs ./sampleapp `
-            --namespace sampleproject `
-            --create-namespace `
-            --set image.repository=ghcr.io/$owner/sample-nodejs `
-            --set image.tag=$tag `
-            --set image.pullPolicy=IfNotPresent
