@@ -1,0 +1,68 @@
+name: Build-Push-Deploy (PowerShell + PAT)
+
+on:
+  push:
+    branches: [ release ]
+  pull_request:
+    branches: [ release ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Set TAG with date and run_number
+        run: |
+          $date = Get-Date -Format "ddMMyyyy"
+          echo "TAG=$date-${{ github.run_number }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+        shell: powershell
+
+      # download code to the runner
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        
+      # GHCR login
+      - name: Login to GHCR
+        run: |
+          docker login ghcr.io `
+            -u ${{ github.repository_owner }} `
+            -p ${{ secrets.GHCR_PAT }}
+
+      # docker build and push
+      - name: Build & push image
+        run: |
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $tag   = $Env:TAG
+          docker build -t ghcr.io/$owner/sample-nodejs:$tag .
+          docker push ghcr.io/$owner/sample-nodejs:$tag
+          
+      # --- This is the hand-off to ArgoCD ---
+
+      # Update the 'values.yaml' file to use the new image tag
+      # 5. Update the 'values.yaml' file to use the new image tag
+      - name: Install yq
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_windows_amd64.exe" -OutFile "C:\Windows\System32\yq.exe"
+
+      - name: Update image tag in values.yaml
+        env:
+          YQ_IMAGE_TAG: ${{ env.TAG }}
+        run: |
+          yq eval -i ".image.tag = strenv(YQ_IMAGE_TAG)" ./sampleapp/values.yaml
+
+      # 6. Commit and push the updated values.yaml back to the release branch
+      - name: Commit and push the updated values.yaml
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions-bot@github.com"
+          git add ./sampleapp/values.yaml
+          # Check for changes before committing
+          if (-not (git diff --staged --quiet)) {
+            git commit -m "ci(release): update image tag to ${{ env.IMAGE_TAG }}"
+            # Before pushing, pull the latest changes from the remote branch.
+            # Use --rebase to avoid creating an unnecessary merge commit.
+            git pull origin release --rebase
+            git push origin HEAD:release
+          } else {
+            Write-Host "No changes to commit."
+          }

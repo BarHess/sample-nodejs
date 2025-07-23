@@ -1,0 +1,83 @@
+name: Build-Push-Deploy (PowerShell + PAT)
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Set TAG with date and run_number 
+        run: |
+          $date = Get-Date -Format "ddMMyyyy"
+          echo "TAG=$date-${{ github.run_number }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+        shell: powershell
+
+      # download code to the runner
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # code analysis
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        
+      #install trivy
+      - name: Install Trivy
+        run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          $ver  = '0.64.1'
+          $zip  = "$env:TEMP\trivy.zip"
+          $dir  = "$env:TEMP\trivy"
+          Invoke-WebRequest "https://github.com/aquasecurity/trivy/releases/download/v$ver/trivy_${ver}_windows-64bit.zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath $dir -Force
+          # expose for NEXT steps
+          echo $dir | Out-File -FilePath $env:GITHUB_PATH -Append
+          Get-ChildItem $dir
+
+      - name: Trivy version
+        run: trivy --version
+
+      # Trivy FS-dependency scan
+      - name: Trivy scan Filesystem
+        run: trivy fs --severity HIGH,CRITICAL --exit-code 1 --ignore-unfixed .
+      
+      # Trivy secrets scan
+      - name: Trivy scan Secrets
+        run: trivy fs --scanners secret --exit-code 1 .
+      
+      # Trivy helm scan
+      - name: Trivy scan Helm chart config
+        run: trivy config --severity HIGH,CRITICAL --exit-code 1 ./sampleapp
+        
+      # GHCR login
+      - name: Login to GHCR
+        run: |
+          docker login ghcr.io `
+            -u ${{ github.repository_owner }} `
+            -p ${{ secrets.GHCR_PAT }}
+
+      # docker build
+      - name: Build & push image
+        run: |
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $tag   = $Env:TAG
+          docker build -t ghcr.io/$owner/sample-nodejs:$tag .
+          
+      # image scan
+      - name: Trivy scan Docker image
+        run: |
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $tag = $Env:TAG
+          trivy image --severity HIGH,CRITICAL --exit-code 1 ghcr.io/$owner/sample-nodejs:$tag
