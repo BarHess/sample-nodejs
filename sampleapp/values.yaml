@@ -13,7 +13,7 @@ image:
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
 
-  tag: "23072025-10"
+  tag: "23072025-11"
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 
 imagePullSecrets: []
@@ -126,12 +126,13 @@ volumeMounts: []
 nodeSelector: {}
 tolerations: []
 affinity: {}
-
 # This section controls the creation of a ServiceMonitor resource,
+
 # which tells the Prometheus Operator how to scrape this application for metrics.
 serviceMonitor:
   # When set to true, a ServiceMonitor resource will be created
   enabled: true
   # The namespace where the ServiceMonitor resource will be created.
+
   # This MUST match the namespace where your Prometheus is running.
   namespace: monitoring
