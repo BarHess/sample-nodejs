@@ -1,44 +1,61 @@
+# .github/workflows/release.yml
 name: ReleaseToArgoCD
 
+# This workflow runs ONLY when a Pull Request from 'main' is closed and merged into the 'release' branch.
 on:
-  push:
-    branches: [ release ]
   pull_request:
-    branches: [ release ]
+    types: [closed]
+    branches:
+      - 'release'
+
+# This ensures that only one instance of this workflow runs at a time for the 'release' branch.
+# If a new PR is merged while a workflow is running, the older one will be canceled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  release:
+    # This 'if' condition ensures the job only runs if the PR was actually merged
+    # and the source branch was 'main'.
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'main'
     runs-on: self-hosted
+    defaults:
+      run:
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command "& {0}"
 
     steps:
+      # 1. Get the code from the 'release' branch after the merge has completed
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          ref: release
+          token: ${{ secrets.GHCR_PAT }}
+
+      # 2. Set the image tag using your preferred date and run_number format
       - name: Set TAG with date and run_number
         run: |
           $date = Get-Date -Format "ddMMyyyy"
           echo "TAG=$date-${{ github.run_number }}" | Out-File -FilePath $env:GITHUB_ENV -Append
         shell: powershell
 
-      # download code to the runner
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        
-      # GHCR login
+      # 3. Login to the container registry
       - name: Login to GHCR
         run: |
-          docker login ghcr.io `
-            -u ${{ github.repository_owner }} `
-            -p ${{ secrets.GHCR_PAT }}
+          docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_PAT }}
 
-      # docker build and push
+      # 4. Build and Push the OFFICIAL production image
       - name: Build & push image
         run: |
+          # Construct the image name with a lowercase owner, as required by GHCR
           $owner = "${{ github.repository_owner }}".ToLower()
-          $tag   = $Env:TAG
-          docker build -t ghcr.io/$owner/sample-nodejs:$tag .
-          docker push ghcr.io/$owner/sample-nodejs:$tag
-          
+          $imageName = "ghcr.io/$owner/sample-nodejs"
+          docker build -t "$imageName`:${{ env.TAG }}" .
+          docker push "$imageName`:${{ env.TAG }}"
+          Write-Host "Pushed production image: $imageName`:${{ env.TAG }}"
+
       # --- This is the hand-off to ArgoCD ---
 
-      # Update the 'values.yaml' file to use the new image tag
       # 5. Update the 'values.yaml' file to use the new image tag
       - name: Install yq
         run: |
@@ -46,8 +63,10 @@ jobs:
 
       - name: Update image tag in values.yaml
         env:
+          # Make the tag available as a dedicated environment variable for yq
           YQ_IMAGE_TAG: ${{ env.TAG }}
         run: |
+          # Use 'yq eval' with 'strenv' to safely pass the tag value, avoiding shell quoting issues.
           yq eval -i ".image.tag = strenv(YQ_IMAGE_TAG)" ./sampleapp/values.yaml
 
       # 6. Commit and push the updated values.yaml back to the release branch
@@ -56,13 +75,10 @@ jobs:
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions-bot@github.com"
           git add ./sampleapp/values.yaml
-          # Check for changes before committing
           if (-not (git diff --staged --quiet)) {
             git commit -m "ci(release): update image tag to ${{ env.TAG }}"
-            # Before pushing, pull the latest changes from the remote branch.
-            # Use --rebase to avoid creating an unnecessary merge commit.
-            git pull origin release --rebase
-            git push origin HEAD:release
+            # With concurrency control, a simple push is now safe.
+            git push origin release
           } else {
             Write-Host "No changes to commit."
           }
